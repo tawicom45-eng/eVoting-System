@@ -1,0 +1,11 @@
+{
+  "transaction": {
+    "transaction_id": "string",
+    "sender": "string",
+    "receiver": "string",
+    "amount": "decimal",
+    "timestamp": "datetime",
+    "transaction_type": "string",
+    "status": "string"
+  }
+}

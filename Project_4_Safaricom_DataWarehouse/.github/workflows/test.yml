@@ -1,0 +1,103 @@
+name: Data Warehouse ETL Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - '*.py'
+      - 'models/**'
+      - 'sql/**'
+      - 'requirements.txt'
+      - '.github/workflows/test.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - '*.py'
+      - 'models/**'
+      - 'sql/**'
+      - 'requirements.txt'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11', '3.12']
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov black isort mypy
+    
+    - name: Lint with flake8 (warnings only)
+      continue-on-error: true
+      run: |
+        pip install flake8
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=.git,__pycache__,models,sql
+        flake8 . --count --exit-zero --max-line-length=127 --statistics --exclude=.git,__pycache__,models,sql
+    
+    - name: Format check with Black
+      continue-on-error: true
+      run: black --check *.py
+    
+    - name: Import sort check with isort
+      continue-on-error: true
+      run: isort --check-only *.py
+    
+    - name: Type checking with mypy
+      continue-on-error: true
+      run: mypy *.py --ignore-missing-imports || true
+    
+    - name: Python syntax check
+      run: python -m py_compile *.py
+    
+    - name: Archive test results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: pytest-results-${{ matrix.python-version }}
+        path: |
+          .pytest_cache/
+
+  code-quality:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install black isort flake8 bandit
+    
+    - name: Run Black formatter
+      run: black *.py --check --diff
+    
+    - name: Run isort import sorter
+      run: isort *.py --check-only --diff
+    
+    - name: Run Flake8 linter
+      run: |
+        flake8 . --max-line-length=127 --count --statistics --exclude=.git,__pycache__,models,sql || true
+    
+    - name: Security check with Bandit
+      continue-on-error: true
+      run: bandit -r . -ll

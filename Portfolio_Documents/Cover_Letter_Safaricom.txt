@@ -1,0 +1,20 @@
+Dear Hiring Manager,
+
+I am writing to express my strong interest in the Data Engineer position at Safaricom.
+
+With extensive experience in building scalable ETL pipelines, data warehousing, and real-time streaming solutions, I am confident in my ability to contribute significantly to your data engineering team.
+
+My portfolio demonstrates expertise in:
+- Apache Airflow orchestration
+- M-Pesa transaction processing
+- Real-time Kafka streaming
+- Star schema data warehouse design
+- AWS S3 data staging
+- PowerBI dashboards and visualization
+
+I am particularly excited about the opportunity to work with Safaricom's massive transaction volumes and contribute to data-driven insights for the business.
+
+Thank you for considering my application.
+
+Best regards,
+Victor

@@ -1,0 +1,2 @@
+external/KRA_Project_2_KRA_Tax_ETL/data/processed/*.csv filter=lfs diff=lfs merge=lfs -text
+external/KRA_Project_2_KRA_Tax_ETL/data/raw/*.csv filter=lfs diff=lfs merge=lfs -text

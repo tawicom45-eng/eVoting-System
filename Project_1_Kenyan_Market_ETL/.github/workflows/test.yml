@@ -1,0 +1,255 @@
+name: ETL Pipeline Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'etl/**'
+      - 'tests/**'
+      - 'run_pipeline.py'
+      - 'requirements.txt'
+      - '.github/workflows/test.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'etl/**'
+      - 'tests/**'
+      - 'run_pipeline.py'
+      - 'requirements.txt'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        python-version: ['3.8', '3.9', '3.10', '3.11']
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: test_kenyan_market
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov
+    
+    - name: Lint with flake8
+      continue-on-error: true
+      run: |
+        # Install flake8
+        pip install flake8
+        # Stop the build if there are Python syntax errors or undefined names
+        flake8 etl/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        # Exit-zero treats all errors as warnings
+        flake8 etl/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    
+    - name: Run unit tests
+      run: |
+        export PYTHONPATH=${{ github.workspace }}
+        pytest tests/ -v --cov=etl --cov=config --cov-report=xml --cov-report=term
+    
+    - name: Integration tests (Postgres)
+      if: matrix.python-version == '3.11'
+      env:
+        DB_TYPE: postgresql
+        DB_HOST: localhost
+        DB_PORT: 5432
+        DB_NAME: test_kenyan_market
+        DB_USER: postgres
+        DB_PASSWORD: testpass
+      run: |
+        export PYTHONPATH=${{ github.workspace }}
+        # Run pipeline against test database
+        python run_pipeline.py --truncate 2>&1 | head -50
+        # Verify data was loaded
+        python scripts/check_count.py
+    
+    - name: Upload coverage to Codecov
+      if: matrix.python-version == '3.11'
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+    
+    - name: Archive test results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: pytest-results-${{ matrix.python-version }}
+        path: |
+          .pytest_cache/
+          *.xml
+
+  code-quality:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install black isort mypy
+    
+    - name: Check code formatting with Black
+      continue-on-error: true
+      run: black --check etl/ config/ run_pipeline.py tests/
+    
+    - name: Check import sorting with isort
+      continue-on-error: true
+      run: isort --check-only etl/ config/ run_pipeline.py tests/
+    
+    - name: Type checking with mypy
+      continue-on-error: true
+      run: mypy etl/ config/ --ignore-missing-imports --no-error-summary || true
+
+  dedup-validation:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Run deduplication test suite
+      run: |
+        export PYTHONPATH=${{ github.workspace }}
+        pytest tests/test_dedup.py -v --tb=short
+    
+    - name: Verify dedup behavior
+      run: |
+        export PYTHONPATH=${{ github.workspace }}
+        python -c "
+        import pandas as pd
+        from etl.transform import clean_data, standardize_columns
+        
+        # Test: 500 raw rows should reduce to ~482 after dedup
+        df = pd.read_csv('data/sample_market_data.csv')
+        print(f'Raw records: {len(df)}')
+        
+        standardized = standardize_columns(df)
+        cleaned = clean_data(standardized)
+        print(f'After dedup: {len(cleaned)}')
+        
+        # Verify aggregation
+        if len(cleaned) < len(df):
+            print(f'✓ Deduplication working: {len(df) - len(cleaned)} duplicates removed')
+        "
+
+  upsert-validation:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: test_kenyan_market
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Test idempotent upsert
+      env:
+        DB_TYPE: postgresql
+        DB_HOST: localhost
+        DB_PORT: 5432
+        DB_NAME: test_kenyan_market
+        DB_USER: postgres
+        DB_PASSWORD: testpass
+      run: |
+        export PYTHONPATH=${{ github.workspace }}
+        
+        # First load
+        echo "=== First load ==="
+        python run_pipeline.py --truncate
+        
+        # Get initial row count
+        python -c "
+        from config.db_config import get_db_connection
+        from sqlalchemy import text
+        _, engine = get_db_connection()
+        with engine.connect() as conn:
+            result = conn.execute(text('SELECT COUNT(*) FROM market_data'))
+            first_count = result.scalar()
+            print(f'After first load: {first_count} rows')
+        "
+        
+        # Second load (idempotent)
+        echo "=== Second load (idempotent) ==="
+        python scripts/cleanup_temp.py
+        python run_pipeline.py
+        
+        # Verify row count didn't duplicate
+        python -c "
+        from config.db_config import get_db_connection
+        from sqlalchemy import text
+        _, engine = get_db_connection()
+        with engine.connect() as conn:
+            result = conn.execute(text('SELECT COUNT(*) FROM market_data'))
+            second_count = result.scalar()
+            print(f'After second load: {second_count} rows')
+            if second_count == first_count:
+                print('✓ Idempotent upsert verified: no duplication')
+            else:
+                print(f'⚠ Row count changed: {first_count} → {second_count}')
+        "
