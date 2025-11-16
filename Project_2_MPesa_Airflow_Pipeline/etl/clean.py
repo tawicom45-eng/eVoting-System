@@ -45,10 +45,10 @@ class TransactionCleaner:
         missing_before = self.df.isnull().sum().sum()
         
         if 'amount' in self.df.columns:
-            self.df['amount'].fillna(0, inplace=True)
+            self.df['amount'] = self.df['amount'].fillna(0)
         
         if 'status' in self.df.columns:
-            self.df['status'].fillna('pending', inplace=True)
+            self.df['status'] = self.df['status'].fillna('pending')
         
         self.df = self.df.dropna(subset=['transaction_id', 'sender', 'receiver'])
         
