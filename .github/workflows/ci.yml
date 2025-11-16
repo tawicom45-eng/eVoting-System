@@ -43,3 +43,8 @@ jobs:
           cd external/KRA_Project_2_KRA_Tax_ETL
           python scripts/generate_sample_data.py --size 200
           python run_pipeline.py
+
+      - name: Run data quality checks
+        run: |
+          cd external/KRA_Project_2_KRA_Tax_ETL
+          python -c "import sqlalchemy; from etl.load.load_to_sqlite import create_conn; from etl.quality import basic_checks; e=create_conn('kra_tax.db'); ok,details=basic_checks(e); print('DQ OK:', ok); print(details); import sys; sys.exit(0 if ok else 2)"
