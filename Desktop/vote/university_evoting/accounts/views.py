@@ -11,6 +11,9 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import make_password, check_password
 from .models import AuthSession, RefreshToken, Profile
 from audit.models import AuditLog
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class MeView(APIView):
@@ -78,6 +81,7 @@ class RefreshView(APIView):
             # audit
             ip = request.META.get('REMOTE_ADDR')
             AuditLog.objects.create(user=user, action="refresh_token_reuse_detected", ip_address=ip, meta=f"token_id={token.token_id}")
+            logger.warning("Refresh token reuse detected", extra={"user_id": user.id, "token_id": str(token.token_id)})
             return Response({"detail": "token reuse detected; sessions revoked"}, status=401)
         # Ensure session not revoked already
         if token.session.revoked:
@@ -87,6 +91,7 @@ class RefreshView(APIView):
             AuthSession.objects.filter(id=token.session.id, revoked=False).update(revoked=True)
             ip = request.META.get('REMOTE_ADDR')
             AuditLog.objects.create(user=token.session.user, action="invalid_refresh_token", ip_address=ip, meta=f"token_id={token.token_id}")
+            logger.warning("Invalid refresh token used", extra={"user_id": token.session.user.id, "token_id": str(token.token_id)})
             return Response({"detail": "invalid token"}, status=401)
         # rotate token: mark old as rotated and create a new token for same session
         token.rotated = True
