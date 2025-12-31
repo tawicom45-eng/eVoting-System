@@ -32,5 +32,27 @@ Notes
 - Diagrams are placeholders; recommend adding `.drawio` files.
 - Suggest adding example Django model implementations and API tests as follow-ups.
 
+Review checklist
+----------------
+- [ ] Documentation accuracy reviewed
+- [ ] Diagrams added or linked (Draw.io/PlantUML)
+- [ ] QA plan validated and test owners assigned
+- [ ] Security and cryptography review completed
+- [ ] Merge decision (squash/merge) and follow-up issues created
+
+Labels (suggested)
+------------------
+- docs, spec, review-needed, security
+
+Reviewers (suggested)
+---------------------
+- @team/evoting, @org/security, @org/ops
+
+Merge steps
+-----------
+1. Ensure all reviewers approve
+2. Create follow-up implementation issues for high-priority modules (Auth, Voting Engine, Crypto)
+3. Merge as **squash** and include a link to follow-up issues in the merge commit message
+
 ---
-*Next: open a PR branch and stage the docs.*
+*Next: create a PR using branch `docs/module-specs` and open for review.*
