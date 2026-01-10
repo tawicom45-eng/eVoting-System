@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Submit Campaign Poster</h1>
+<form method="post" enctype="multipart/form-data" action="{% url 'poster-submit-form' %}">
+  {% csrf_token %}
+  <label for="id_candidate_name">Full name</label>
+  <input type="text" name="candidate_name" id="id_candidate_name" required />
+
+  <label for="id_candidate_position">Position</label>
+  <input type="text" name="candidate_position" id="id_candidate_position" required />
+
+  <label for="id_slogan">Slogan</label>
+  <textarea name="slogan" id="id_slogan" maxlength="280"></textarea>
+
+  <label for="id_photo">Photo</label>
+  <input type="file" name="photo" id="id_photo" accept="image/*" required />
+
+  <label for="id_template">Template (optional)</label>
+  <select name="template" id="id_template">
+    <option value="">Default</option>
+    {% for t in templates %}
+      <option value="{{ t.id }}">{{ t.name }}</option>
+    {% endfor %}
+  </select>
+
+  <button type="submit">Submit</button>
+</form>
+{% endblock %}

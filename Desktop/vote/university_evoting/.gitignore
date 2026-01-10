@@ -1,0 +1,9 @@
+# ignore keys
+keys/
+
+# python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*~

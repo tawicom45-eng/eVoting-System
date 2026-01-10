@@ -9,6 +9,11 @@ from django.utils import timezone
 from datetime import timedelta
 from voting.utils_qr import generate_signed_qr_token, verify_signed_qr_token, token_hash as qr_token_hash
 from .models import QRLoginToken
+from .models import TrustedDevice
+from .serializers import TrustedDeviceSerializer
+from rest_framework import generics
+from rest_framework.permissions import IsAuthenticated
+from django.shortcuts import get_object_or_404
 
 # Added simple auth endpoints for refresh-token rotation proof-of-concept
 import base64
@@ -381,6 +386,43 @@ class QRLoginVerifyView(APIView):
             pass
 
         return Response({'access_token': access_token, 'refresh_token': token_value})
+
+
+class TrustedDeviceListCreateView(generics.ListCreateAPIView):
+    permission_classes = (IsAuthenticated,)
+    serializer_class = TrustedDeviceSerializer
+
+    def get_queryset(self):
+        return TrustedDevice.objects.filter(user=self.request.user, revoked=False)
+
+    def perform_create(self, serializer):
+        # Accept `name` and `fingerprint` from client; trusted_until optional
+        serializer.save(user=self.request.user)
+
+
+class TrustedDeviceDeleteView(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    def delete(self, request, device_id):
+        # Soft-revoke the trusted device belonging to the current user (look up by device_id UUID)
+        td = get_object_or_404(TrustedDevice, device_id=device_id, user=request.user)
+        td.revoked = True
+        td.save()
+        return Response({"detail": "device revoked"}, status=200)
+
+
+class TrustedDeviceDeleteView(generics.DestroyAPIView):
+    permission_classes = (IsAuthenticated,)
+    serializer_class = TrustedDeviceSerializer
+    lookup_field = 'device_id'
+
+    def get_queryset(self):
+        return TrustedDevice.objects.filter(user=self.request.user)
+
+    def perform_destroy(self, instance):
+        # mark revoked instead of hard delete
+        instance.revoked = True
+        instance.save()
 
 
 # MFA endpoints (TOTP)

@@ -28,7 +28,7 @@ class EndToEndVoteFlowTests(TestCase):
 
     def test_issue_token_and_cast_vote(self):
         # Authenticate and issue token
-        self.client.login(username="voter1", password="testpass")
+        self.client.force_authenticate(user=self.user)
         resp = self.client.post(f"/api/voting/issue/{self.election.id}/")
         self.assertEqual(resp.status_code, 200)
         token = resp.data.get("token")
@@ -39,7 +39,7 @@ class EndToEndVoteFlowTests(TestCase):
         cast_resp = self.client.post("/api/voting/cast/", payload, format="json")
         self.assertEqual(cast_resp.status_code, 201)
 
-        # Check token used flag
+        # Check token used flag#
         vt = VoteToken.objects.get(token=token)
         self.assertTrue(vt.used)
 
@@ -61,15 +61,18 @@ class EndToEndVoteFlowTests(TestCase):
 
     def test_token_belongs_to_user(self):
         # Issue token as user1
-        self.client.login(username="voter1", password="testpass")
+        self.client.force_authenticate(user=self.user)
         resp = self.client.post(f"/api/voting/issue/{self.election.id}/")
         token = resp.data.get("token")
-        self.client.logout()
+        self.client.force_authenticate(user=None)
 
         # Create another user and try to use the token
         User = get_user_model()
         other = User.objects.create_user(username="other", password="pass")
-        self.client.login(username="other", password="pass")
+        # ensure a Profile exists so ABAC policy evaluation can make a decision
+        from accounts.models import Profile
+        Profile.objects.create(user=other, role="student", status=Profile.STATUS_ACTIVE)
+        self.client.force_authenticate(user=other)
         payload = {"token": token, "position_id": self.position.id, "candidate_id": self.candidate.id}
         r = self.client.post("/api/voting/cast/", payload, format="json")
         # Should 404 because token not found for this user
@@ -82,7 +85,7 @@ class EndToEndVoteFlowTests(TestCase):
             profile.status = "suspended"
             profile.save()
 
-        self.client.login(username="voter1", password="testpass")
+        self.client.force_authenticate(user=self.user)
         r1 = self.client.post(f"/api/voting/issue/{self.election.id}/")
         self.assertEqual(r1.status_code, 403)
 
@@ -92,3 +95,13 @@ class EndToEndVoteFlowTests(TestCase):
         payload = {"token": str(vt.token), "position_id": self.position.id, "candidate_id": self.candidate.id}
         r2 = self.client.post("/api/voting/cast/", payload, format="json")
         self.assertEqual(r2.status_code, 403)
+
+    def test_abac_denies_based_on_profile_attribute(self):
+        profile = getattr(self.user, "profile", None)
+        profile.attributes["allowed_to_vote"] = False
+        profile.save()
+
+        self.client.login(username="voter1", password="testpass")
+        r = self.client.post(f"/api/voting/issue/{self.election.id}/")
+        self.assertEqual(r.status_code, 403)
+ # self-authentication needed

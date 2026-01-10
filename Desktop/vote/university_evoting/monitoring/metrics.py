@@ -14,10 +14,20 @@ try:
             c = Counter(f"university_evoting_{name}", f"Counter for {name}")
             _counters[name] = c
         c.inc(amount)
+        # best-effort also persist a sample to analytics DB if available
+        try:
+            from analytics.utils import record_metric
+            record_metric(name, amount)
+        except Exception:
+            pass
 except Exception:
     def increment(name, amount=1):
-        # no-op if prometheus_client not installed
-        return
+        # no-op for prometheus, but still try to persist a sample in analytics DB
+        try:
+            from analytics.utils import record_metric
+            record_metric(name, amount)
+        except Exception:
+            return
 
 try:
     import sentry_sdk

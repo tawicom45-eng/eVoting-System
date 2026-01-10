@@ -142,6 +142,31 @@ class QRLoginToken(models.Model):
         return f"QRLoginToken for {self.user} (used={self.used})"
 
 
+class TrustedDevice(models.Model):
+    """Represents a trusted device that can be remembered for a user.
+
+    This model is intentionally simple for the POC: store a device fingerprint,
+    optional human-friendly `name`, structured `device_info` and a `trusted`
+    flag. Trusted devices can be revoked by users or admins.
+    """
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='trusted_devices')
+    name = models.CharField(max_length=150, blank=True)
+    device_fingerprint = models.CharField(max_length=255, db_index=True)
+    device_info = models.JSONField(default=dict, blank=True)
+    trusted = models.BooleanField(default=True)
+    last_used = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    revoked = models.BooleanField(default=False)
+
+    class Meta:
+        indexes = [models.Index(fields=['user', 'device_fingerprint'])]
+
+    def __str__(self):
+        return f"TrustedDevice {self.name or self.device_fingerprint} for {self.user} (revoked={self.revoked})"
+
+    # The model below was an older duplicate; consolidated to a single TrustedDevice above.
+
+
 # Hook profile changes to invalidate ABAC cache versioning
 from django.db.models.signals import post_save
 from django.dispatch import receiver

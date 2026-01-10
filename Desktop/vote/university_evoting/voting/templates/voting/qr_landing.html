@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Scan Candidate QR</title>
+  </head>
+  <body>
+    <h1>Vote for: {{ candidate.name }}</h1>
+    <p>Position: {{ candidate.position.name }} — Election: {{ candidate.position.election.name }}</p>
+    {% if signed_token %}
+      <p>A one-time signed token is attached to this QR. You may be able to cast immediately after login.</p>
+    {% endif %}
+    {% if user.is_authenticated %}
+      <p><a href="{% url 'voting-qr-confirm' qr_slug=candidate.qr_slug %}{% if signed_token %}?token={{ signed_token }}{% endif %}">Proceed to confirm vote</a></p>
+    {% else %}
+      <p>Please <a href="{% url 'login' %}?next={% url 'voting-qr-confirm' qr_slug=candidate.qr_slug %}{% if signed_token %}?token={{ signed_token }}{% endif %}">login</a> to continue, or use SSO: <a href="{% url 'integrations-sso-login' %}?next={% url 'voting-qr-confirm' qr_slug=candidate.qr_slug %}{% if signed_token %}&token={{ signed_token }}{% endif %}">Login with SSO</a>.</p>
+    {% endif %}
+  </body>
+</html>

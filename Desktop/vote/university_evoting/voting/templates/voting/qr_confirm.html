@@ -1,0 +1,68 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Confirm Vote</title>
+    <style>
+      #message { margin-top: 1em; color: #333; }
+      #confirm-button[disabled] { opacity: 0.6; }
+    </style>
+  </head>
+  <body>
+    <h1>Confirm vote for: {{ candidate.name }}</h1>
+    {% if signed_token %}
+      <p><em>A signed token is attached to this QR. If it is valid for you it may allow immediate cast.</em></p>
+    {% endif %}
+    <form method="post" id="confirm-form">{% csrf_token %}
+      <button id="confirm-button" type="submit">Confirm and cast vote</button>
+    </form>
+
+    <div id="message" role="status" aria-live="polite"></div>
+
+    <script>
+      (function(){
+        function getCookie(name){
+          const value = `; ${document.cookie}`;
+          const parts = value.split(`; ${name}=`);
+          if(parts.length === 2) return parts.pop().split(';').shift();
+        }
+        const form = document.getElementById('confirm-form');
+        const btn = document.getElementById('confirm-button');
+        const msg = document.getElementById('message');
+        form.addEventListener('submit', async function(e){
+          e.preventDefault();
+          btn.disabled = true;
+          msg.textContent = 'Casting vote...';
+          const csrftoken = getCookie('csrftoken');
+          try{
+            const resp = await fetch(window.location.href, {
+              method: 'POST',
+              credentials: 'same-origin',
+              headers: {
+                'X-CSRFToken': csrftoken,
+                'Accept': 'text/html'
+              }
+            });
+            if(resp.redirected){
+              window.location = resp.url;
+              return;
+            }
+            if(resp.status === 403){
+              const text = await resp.text();
+              msg.textContent = 'Not eligible: ' + text;
+              btn.disabled = false;
+              return;
+            }
+            // fallback: load response html and show a brief success message
+            msg.textContent = 'Vote cast successfully. Redirecting...';
+            // attempt to navigate to success page
+            window.location = (new URL('/api/voting/qr/success/', window.location.origin)).href;
+          }catch(err){
+            msg.textContent = 'Error casting vote: ' + err;
+            btn.disabled = false;
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>

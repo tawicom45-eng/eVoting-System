@@ -1,0 +1,15 @@
+[Unit]
+Description=Celery Worker for evoting_system
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/home/kipruto/Desktop/vote/university_evoting
+EnvironmentFile=/home/kipruto/Desktop/vote/university_evoting/.env
+ExecStart=/home/kipruto/Desktop/vote/university_evoting/.venv/bin/celery -A evoting_system worker -l info
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

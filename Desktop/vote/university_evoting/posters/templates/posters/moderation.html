@@ -1,0 +1,26 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<h1>Poster Moderation</h1>
+{% for p in pending %}
+  <div style="border:1px solid #ccc; padding:8px; margin:8px 0;">
+    <h3>{{ p.candidate_name }} — {{ p.candidate_position }}</h3>
+    <p>Slogan: {{ p.slogan }}</p>
+    {% if p.generated_files.png %}
+      <img src="{{ p.generated_files.png }}" style="max-width:200px;" />
+    {% endif %}
+    <form method="post" action="{% url 'poster-moderate' p.submission_id %}">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="approve" />
+      <button type="submit">Approve</button>
+    </form>
+    <form method="post" action="{% url 'poster-moderate' p.submission_id %}">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="reject" />
+      <input type="text" name="reason" placeholder="reason (optional)" />
+      <button type="submit">Reject</button>
+    </form>
+  </div>
+{% empty %}
+  <p>No pending submissions.</p>
+{% endfor %}
+{% endblock %}

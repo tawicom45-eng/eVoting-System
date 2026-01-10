@@ -14,6 +14,8 @@ from .views import (
     LogoutView,
     QRIssueLoginView,
     QRLoginVerifyView,
+    TrustedDeviceListCreateView,
+    TrustedDeviceDeleteView,
 )
 
 urlpatterns = [
@@ -36,4 +38,7 @@ urlpatterns = [
     # QR login (admin issue + verify)
     path("qr/login/issue/", QRIssueLoginView.as_view(), name='qr-login-issue'),
     path("qr/login/verify/", QRLoginVerifyView.as_view(), name='qr-login-verify'),
+    # Trusted device registry
+    path("devices/", TrustedDeviceListCreateView.as_view(), name='trusted-devices-list'),
+    path("devices/<uuid:device_id>/", TrustedDeviceDeleteView.as_view(), name='trusted-devices-delete'),
 ]

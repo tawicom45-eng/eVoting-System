@@ -1,0 +1,45 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+  <h1>{% trans "Signed QR link issued" %} — {{ candidate.name }}</h1>
+
+  <p><strong>User:</strong> {{ user.username }}</p>
+
+  <p>
+    <label for="signed-link-input">Signed landing link (copy & share):</label><br>
+    <input id="signed-link-input" type="text" value="{{ signed_link }}" size="100" readonly>
+    <button id="copy-link">Copy</button>
+    <a id="open-link" href="{{ signed_link }}" target="_blank">Open</a>
+  </p>
+
+  <p>
+    <img id="qr-image" src="{{ qr_src }}" alt="QR preview">
+  </p>
+
+  <p>
+    <a href="{% url 'admin:elections_candidate_change' candidate.id %}">Back to candidate</a>
+  </p>
+
+  <script>
+    (function(){
+      const btn = document.getElementById('copy-link');
+      const input = document.getElementById('signed-link-input');
+      btn.addEventListener('click', async function(e){
+        e.preventDefault();
+        try{
+          if(navigator.clipboard && navigator.clipboard.writeText){
+            await navigator.clipboard.writeText(input.value);
+          } else {
+            input.select();
+            document.execCommand('copy');
+          }
+          btn.textContent = 'Copied';
+          setTimeout(()=> btn.textContent = 'Copy', 2000);
+        }catch(err){
+          alert('Copy failed: ' + err);
+        }
+      });
+    })();
+  </script>
+{% endblock %}
