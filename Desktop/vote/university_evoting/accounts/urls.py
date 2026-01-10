@@ -12,6 +12,8 @@ from .views import (
     LoginView,
     RefreshView,
     LogoutView,
+    QRIssueLoginView,
+    QRLoginVerifyView,
 )
 
 urlpatterns = [
@@ -31,4 +33,7 @@ urlpatterns = [
     path("login/", LoginView.as_view(), name="login"),
     path("token/refresh/", RefreshView.as_view(), name="token-refresh"),
     path("logout/", LogoutView.as_view(), name="logout"),
+    # QR login (admin issue + verify)
+    path("qr/login/issue/", QRIssueLoginView.as_view(), name='qr-login-issue'),
+    path("qr/login/verify/", QRLoginVerifyView.as_view(), name='qr-login-verify'),
 ]

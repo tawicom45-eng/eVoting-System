@@ -4,6 +4,11 @@ from rest_framework.permissions import IsAuthenticated
 from .serializers import ProfileSerializer
 from django.core import signing
 from django.conf import settings
+from rest_framework.permissions import IsAdminUser
+from django.utils import timezone
+from datetime import timedelta
+from voting.utils_qr import generate_signed_qr_token, verify_signed_qr_token, token_hash as qr_token_hash
+from .models import QRLoginToken
 
 # Added simple auth endpoints for refresh-token rotation proof-of-concept
 import base64
@@ -285,6 +290,97 @@ class PasswordResetConfirmView(APIView):
         user.set_password(new_password)
         user.save()
         return Response({'detail': 'password reset successful'})
+
+
+class QRIssueLoginView(APIView):
+    """Admin endpoint to issue a signed QR login token for a specific user.
+
+    POST body: {"user_id": int, "ttl_minutes": int (optional)}
+    """
+    permission_classes = (IsAdminUser,)
+
+    def post(self, request):
+        user_id = request.data.get('user_id')
+        ttl = request.data.get('ttl_minutes')
+        if not user_id:
+            return Response({'detail': 'user_id required'}, status=400)
+
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({'detail': 'user not found'}, status=404)
+
+        # generate signed token payload with user id and timestamp
+        token = generate_signed_qr_token(user.id, 0)  # reuse signed token format; candidate=0 unused
+        th = qr_token_hash(token)
+        expires_at = None
+        if ttl:
+            try:
+                ttl_int = int(ttl)
+                if ttl_int > 0:
+                    expires_at = timezone.now() + timedelta(minutes=ttl_int)
+            except Exception:
+                pass
+
+        q = QRLoginToken.objects.create(token=token, token_hash=th, user=user, issued_by=request.user, expires_at=expires_at)
+
+        preview = request.build_absolute_uri('/api/accounts/qr/login/verify/')
+        return Response({'token': token, 'token_hash': th, 'preview': preview}, status=201)
+
+
+class QRLoginVerifyView(APIView):
+    """Public endpoint for kiosks/scanners to verify a QR login token and create a session.
+
+    POST body: {"token": "..."}
+    """
+
+    permission_classes = ()
+
+    def post(self, request):
+        token = request.data.get('token')
+        if not token:
+            return Response({'detail': 'token required'}, status=400)
+        try:
+            payload = verify_signed_qr_token(token)
+        except Exception:
+            return Response({'detail': 'invalid_or_expired'}, status=400)
+
+        th = qr_token_hash(token)
+        try:
+            qobj = QRLoginToken.objects.get(token_hash=th)
+        except QRLoginToken.DoesNotExist:
+            return Response({'detail': 'token not issued'}, status=404)
+
+        if qobj.used:
+            return Response({'detail': 'token already used'}, status=400)
+        if qobj.expires_at and timezone.now() > qobj.expires_at:
+            return Response({'detail': 'token expired'}, status=400)
+
+        # create session for user and mark token used
+        session = AuthSession.objects.create(user=qobj.user)
+        token_value, token_id, secret = generate_refresh_token_value()
+        token_hash = make_password(secret)
+        RefreshToken.objects.create(session=session, token_id=token_id, token_hash=token_hash)
+        access_jti = uuid.uuid4()
+        from .models import RevokedAccessToken
+        RevokedAccessToken.objects.create(jti=access_jti, session=session)
+        secret_setting = getattr(__import__('django.conf').conf.settings, 'ACCESS_TOKEN_SECRET')
+        import hmac, hashlib
+        sig = hmac.new(secret_setting.encode('utf-8'), str(access_jti).encode('utf-8'), hashlib.sha256).hexdigest()
+        access_token = f"{access_jti}.{sig}"
+
+        qobj.used = True
+        qobj.save()
+
+        # audit
+        try:
+            AuditLog.objects.create(user=qobj.user, action='qr.login_success', meta=str({'issued_by': qobj.issued_by_id}))
+        except Exception:
+            pass
+
+        return Response({'access_token': access_token, 'refresh_token': token_value})
 
 
 # MFA endpoints (TOTP)
