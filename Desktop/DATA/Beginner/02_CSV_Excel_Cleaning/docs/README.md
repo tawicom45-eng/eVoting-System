@@ -1,12 +1,57 @@
 # 02_CSV_Excel_Cleaning
 
-Scripts for basic CSV/Excel cleaning.
+CSV and Excel data cleaning utilities with CLI options and unit tests.
 
-How to run:
+## Quick start
 
-- Install pandas: `pip install pandas openpyxl`
-- Place an Excel file `data/raw/sample.xlsx` or CSV `data/raw/sample.csv`
-- Run: `python code/cleaning_script.py`
+1. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
 
-Outputs:
-- Cleaned CSV at `data/cleaned/cleaned_sample.csv`
+2. Run the cleaning script on a sample CSV:
+```bash
+python code/cleaning_script.py --input data/raw/sample.csv --output data/cleaned/cleaned.csv
+```
+
+## CLI options
+
+- `--input, -i` : Input CSV/XLSX path (default: `data/raw/sample.csv`)
+- `--output, -o` : Output CSV path (default: `data/cleaned/cleaned_sample.csv`)
+- `--drop-empty-rows` : Remove rows where all values are NaN (default: True)
+- `--drop-empty-cols` : Remove columns where all values are NaN (default: False)
+- `--fill-na-numeric FLOAT` : Fill NaN in numeric columns with this value
+- `--fill-na-string STR` : Fill NaN in string columns with this value
+- `--strip-whitespace` : Strip leading/trailing whitespace from strings (default: True)
+- `--remove-duplicates` : Remove duplicate rows (default: False)
+- `--log-level LEVEL` : Logging level (DEBUG, INFO, WARNING, ERROR) (default: INFO)
+- `--profile` : Print data profile before/after cleaning
+
+## Examples
+
+Remove empty rows and duplicates:
+```bash
+python code/cleaning_script.py --input data/raw/sample.csv --output data/cleaned/clean.csv --remove-duplicates
+```
+
+Fill NaN values:
+```bash
+python code/cleaning_script.py --input data/raw/sample.csv --output data/cleaned/clean.csv --fill-na-numeric 0 --fill-na-string "Unknown"
+```
+
+Profile the data:
+```bash
+python code/cleaning_script.py --input data/raw/sample.csv --profile
+```
+
+## Testing
+
+Run unit tests:
+```bash
+pytest -q tests/
+```
+
+## Notes
+
+- The script preserves column order and index (unless `remove-duplicates` is used).
+- For large files (GB+), consider processing in chunks or using `pandas.read_csv(..., chunksize=N)`.
