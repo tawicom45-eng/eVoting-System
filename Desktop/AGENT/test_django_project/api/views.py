@@ -7,11 +7,13 @@ from .serializers import UserSerializer, PostSerializer
 
 
 class UserViewSet(viewsets.ModelViewSet):
+    """Class: function"""
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
     @action(detail=True, methods=['get'])
     def get_user_posts(self, request, pk=None):
+        """Function: function"""
 try:
             user = self.get_object()
     except Exception as e:
