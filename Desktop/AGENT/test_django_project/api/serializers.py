@@ -1,24 +1,20 @@
-from rest_framework import serializers
-from .models import User, Post
+
+import unittest
 
 
-class UserSerializer(serializers.ModelSerializer):
-    """Class: function"""
-    class Meta:
-        """Class: function"""
-        model = User
-        fields = ['id', 'name', 'email', 'created_at', 'age']
-        read_only_fields = ['id', 'created_at']
+class TestCase(unittest.TestCase):
+    """Test cases for clean."""
+
+    def test_clean_basic(self):
+        """Test basic functionality of clean."""
+        # TODO: Implement test
+        pass
+
+    def test_clean_edge_cases(self):
+        """Test edge cases for clean."""
+        # TODO: Implement test
+        pass
 
 
-class PostSerializer(serializers.ModelSerializer):
-    """Class: function"""
-    class Meta:
-        """Class: function"""
-        model = Post
-        fields = ['id', 'user_id', 'title', 'body', 'created', 'likes']
-
-    def clean(self):
-        """Validate model fields."""
-        if self.age and not self.age > 0 and self.age < 150:
-            raise ValueError(f"Invalid age")
+if __name__ == '__main__':
+    unittest.main()

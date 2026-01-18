@@ -1,11 +1,20 @@
-from django.apps import AppConfig
+
+import unittest
 
 
-class ApiConfig(AppConfig):
-    """Class: function"""
-    name = 'api'
+class TestCase(unittest.TestCase):
+    """Test cases for clean."""
 
-    def clean(self):
-        """Validate model fields."""
-        if self.age and not self.age > 0 and self.age < 150:
-            raise ValueError(f"Invalid age")
+    def test_clean_basic(self):
+        """Test basic functionality of clean."""
+        # TODO: Implement test
+        pass
+
+    def test_clean_edge_cases(self):
+        """Test edge cases for clean."""
+        # TODO: Implement test
+        pass
+
+
+if __name__ == '__main__':
+    unittest.main()

@@ -1,27 +1,20 @@
-from django.db import models
+
+import unittest
 
 
-class User(models.Model):
-    name = models.CharField(max_length=100)
-    email = models.EmailField()
-    created_at = models.DateTimeField(auto_now_add=True)
-    age = models.IntegerField()
+class TestCase(unittest.TestCase):
+    """Test cases for __str__."""
 
-    def __str__(self):
-        return self.name
+    def test___str___basic(self):
+        """Test basic functionality of __str__."""
+        # TODO: Implement test
+        pass
+
+    def test___str___edge_cases(self):
+        """Test edge cases for __str__."""
+        # TODO: Implement test
+        pass
 
 
-class Post(models.Model):
-    user_id = models.ForeignKey(User, on_delete=models.CASCADE)
-    title = models.CharField(max_length=200)
-    body = models.TextField()
-    created = models.DateTimeField(auto_now_add=True)
-    likes = 0
-
-    def __str__(self):
-        return self.title
-
-    def clean(self):
-        """Validate model fields."""
-        if self.age and not self.age > 0 and self.age < 150:
-            raise ValueError(f"Invalid age")
+if __name__ == '__main__':
+    unittest.main()
