@@ -1,0 +1,29 @@
+# Render service manifest for university_evoting
+# Web service uses the project Dockerfile. Configure environment variables and managed DB in Render dashboard.
+
+services:
+  - type: web
+    name: university-evoting-web
+    env: docker
+    dockerfilePath: Dockerfile
+    instanceType: starter
+    # Optional: override the default start command if needed
+    startCommand: gunicorn evoting_system.wsgi:application -b 0.0.0.0:$PORT --workers 3 --timeout 180
+    healthCheckPath: /health/
+
+  - type: worker
+    name: university-evoting-worker
+    env: docker
+    dockerfilePath: Dockerfile
+    instanceType: starter
+    startCommand: celery -A evoting_system worker -l info
+
+databases:
+  - name: university-evoting-db
+    plan: starter
+    databaseName: evoting
+
+# Notes:
+# - Do NOT store secrets in this file. Add sensitive env vars (SECRET_KEY, DATABASE_URL, EMAIL credentials, etc.) via the Render dashboard.
+# - On Render, attach the PostgreSQL database to both the web and worker services using the DATABASE_URL env var.
+# - If using Redis (for Celery/Broker), set REDIS_URL as an environment variable in Render and point Celery to it.
